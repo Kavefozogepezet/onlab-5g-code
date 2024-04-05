@@ -1,15 +1,22 @@
 
 import matplotlib.pyplot as plot
 from operations import *
+from savenet import *
+from pathloss import *
+from optimize import *
 from network import NetworkData
 
 if __name__ == '__main__':
-    net = NetworkData.load('test', force_init=True)
+    net = NetworkData()
 
-    op = SimplePathLoss(fr_band=(24,40)) & SimpleConnectionFilter(min_snr=0)
+    op = (
+        Load('test', force_init=True) &
+        FreeSpacePathloss() &
+        SimpleConnectionFilter(min_snr=0) &
+        Optimize() &
+        Save('test')
+    )
     op.execute(net)
-
-    net.save('test')
 
     print(net.ues)
     print(net.gnbs)

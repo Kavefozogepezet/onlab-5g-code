@@ -1,7 +1,20 @@
-
 from network import NetworkData
-import numpy as np
-import math
+import pandas as pd
+
+
+class RequiredColumnMissingException(Exception): pass # TODO table and column name
+
+
+def requires(table: str, *columns: str):
+    def requires_dec(func):
+        def check_colums(self, net):
+            real_cols = getattr(net, table).columns
+            for column in columns:
+                if column not in real_cols:
+                    raise RequiredColumnMissingException()
+            func(self, net)
+        return check_colums
+    return requires_dec
 
 
 class Operation:
@@ -46,23 +59,6 @@ class OpSequence(Operation):
     def execute(self, net: NetworkData) -> None:
         for op in self.ops:
             op.execute(net)
-
-
-class SimplePathLoss(Operation):
-    def __init__(self, fr_band: tuple[float, float]):
-        self.fr = (fr_band[0] + fr_band[1]) / 2
-
-
-    def execute(self, net: NetworkData) -> None:
-        conns = net.conns
-        x2 = (conns['x_ue'] - conns['x_gnb']) ** 2
-        y2 = (conns['y_ue'] - conns['y_gnb']) ** 2
-        conns['dst'] = np.clip(np.sqrt(x2 + y2), 0.1, None)
-        conns['pathloss'] = 20 * (
-            np.log10(conns['dst']) +
-            np.log10(self.fr*10e9) +
-            math.log10(4 * math.pi / 3e8)
-        )
 
 
 class SimpleConnectionFilter(Operation):
