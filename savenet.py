@@ -3,6 +3,8 @@ from network import *
 import numpy as np
 import zipfile
 import os
+import configparser
+from io import StringIO
 
 
 def scatter(width, height, density):
@@ -56,16 +58,24 @@ class Load(Operation):
         config = configparser.ConfigParser()
         config.read(name)
 
+        # Print all fields of config
+        for section in config.sections():
+            print(f"Section: {section}")
+            for key, value in config.items(section):
+                print(f"{key}: {value}")
+
         net.channel = self._load_channel_info(config['channel'])
+        net.mcst = self._load_mcs_table(config['mcs_table'])
 
         ues = config['ues']
         net.ues['x'], net.ues['y'] = self._gen_positions(net.channel, ues['pos'])
         net.ues['id'] = net.ues.index
-        net.ues['max_power'] = float(ues['max_power'])
+        self.read_ue_props(net, ues)
 
         gnbs = config['gnbs']
         net.gnbs['x'], net.gnbs['y'] = self._gen_positions(net.channel, gnbs['pos'])
         net.gnbs['id'] = net.gnbs.index
+        self.read_gnb_props(net, gnbs)
 
         self._gen_connections(net)
 
@@ -89,6 +99,15 @@ class Load(Operation):
             float(data['noise']), area, bandwidth)
     
 
+    def _load_mcs_table(self, data):
+        return MCSTable(
+            int(data['levels']),
+            float(data['min_snr']),
+            float(data['spacing']),
+            float(data['efficiency'])
+        )
+    
+
     def _gen_positions(self, channel, pos):
         method, args = pos.split(':')
         if method == 'grid':
@@ -101,6 +120,15 @@ class Load(Operation):
     def _gen_connections(self, net):
         net.conns = net.ues.merge(net.gnbs, 'cross', suffixes=('_ue', '_gnb'))
 
+
+    def read_ue_props(self, net, ues):
+        if 'gain' in ues: net.ues['gain'] = float(ues['gain'])
+        if 'demand' in ues: net.ues['demand'] = float(ues['demand'])
+        if 'max_power' in ues: net.ues['max_power'] = float(ues['max_power'])
+
+
+    def read_gnb_props(self, net, gnbs):
+        if 'gain' in gnbs: net.gnbs['gain'] = float(gnbs['gain'])
 
 
 class Save(Operation):
@@ -117,9 +145,37 @@ class Save(Operation):
     def execute(self, net):
         appendix = '-' + self.appendix if self.appendix else ''
         path = self.path + self.name + appendix + '.5gn.zip'
+
+        config = configparser.ConfigParser()
+        self.channel_to_ini(net.channel, config)
+        self.mcs_to_ini(net.mcst, config)
+
+        config_str = ''
+        with StringIO() as strio:
+            config.write(strio)
+            strio.seek(0)
+            config_str = strio.read()
+
         with zipfile.ZipFile(path, 'w', compression=zipfile.ZIP_DEFLATED) as zip_file:
             zip_file.writestr('ues.csv', net.ues.to_csv(index=False))
             zip_file.writestr('gnbs.csv', net.gnbs.to_csv(index=False))
             zip_file.writestr('conns.csv', net.conns.to_csv(index=False))
-            zip_file.writestr('channel.ini', net.channel.to_ini())
+            zip_file.writestr('channel.ini', config_str)
+
+
+    def channel_to_ini(self, channel, config):
+        config['channel'] = {
+            'noise': str(channel.noise),
+            'area': f'{channel.area[0]}x{channel.area[1]}',
+            'bandwidth': f'{channel.bandwidth[0]}-{channel.bandwidth[1]}'
+        }
+
+
+    def mcs_to_ini(self, mcs, config):
+        config['mcs_table'] = {
+            'levels': str(mcs.levels),
+            'min_snr': str(mcs.min_snr),
+            'spacing': str(mcs.spacing),
+            'efficiency': str(mcs.efficiency)
+        }
 

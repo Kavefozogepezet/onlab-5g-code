@@ -2,7 +2,10 @@ from network import NetworkData
 import pandas as pd
 
 
-class RequiredColumnMissingException(Exception): pass # TODO table and column name
+class RequiredColumnMissingException(Exception):
+    def __init__(self, table, column, classname) -> None:
+        super().__init__(
+            f'Table "{table}" has no column "{column}", but operation "{classname}" requires it.') 
 
 
 def requires(table: str, *columns: str):
@@ -11,7 +14,7 @@ def requires(table: str, *columns: str):
             real_cols = getattr(net, table).columns
             for column in columns:
                 if column not in real_cols:
-                    raise RequiredColumnMissingException()
+                    raise RequiredColumnMissingException(table, column, self.__class__.__name__)
             func(self, net)
         return check_colums
     return requires_dec

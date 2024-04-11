@@ -1,11 +1,15 @@
 
 from scipy.optimize import bisect
-from matplotlib import pyplot as plt
 import numpy as np
 
 
-def approx(fn, dfn, a, b, err):
-    segments = [(a, fn(a)-err)]
+def approx(fun, derivative, a, b, err, convex=True):
+    fn = fun if convex else lambda x: -fun(x)
+    dfn = derivative if convex else lambda x: -derivative(x)
+
+    neg = 1 if convex else -1
+
+    segments = [(a, neg*(fn(a)-err))]
     while a < b:
         G = lambda x: dfn(x)*(x-a) + fn(a) - fn(x) - 2*err
         if G(b) < 0:
@@ -20,22 +24,96 @@ def approx(fn, dfn, a, b, err):
 
         b2 = bisect(H, root, b)
         a = b2
-        segments.append((a, fn(a)-err))
+        segments.append((a, neg*(fn(a)-err)))
 
-    segments.append((b, fn(b)))
+    segments.append((b, neg*fn(b)))
     return segments
 
-func = lambda x: np.log10(5 + 10**x)
-dfunc = lambda x: 10**x / (5 + 10**x)
 
-points = approx(func, dfunc, -2, 2, 0.01)
+def adaptive_approx(fun, derivative, bounds: list[float], errp=0.01, convex=True):
+    points = []
+    for i, a in enumerate(bounds[:-1]):
+        b = bounds[i+1]
+        err = errp*fun(a)
+        points += approx(fun, derivative, a, b, err, convex)[:-1]
+    points.append((bounds[-1], fun(bounds[-1])))
+    return points
 
-x = np.linspace(-2, 2, 100)
-y = func(x)
-plt.plot(x, y)
 
-aprx_x = [x for x, _ in points]
-aprx_y = [y for _, y in points]
+def lin2db(a, b, err=0.01):
+    fn = lambda x: 10 * np.log10(x)
+    dfn = lambda x: 10 / (x * np.log(10))
 
-plt.plot(aprx_x, aprx_y)
-plt.show()
+    x = np.linspace(a, b, 10000)
+    return approx(fn, dfn, a, b, err, False), x, fn(x)
+
+
+def db2lin(a, b, **kwargs):
+    fn = lambda x: 10**(x/10)
+    dfn = lambda x: np.log(10) * 10**(x/10 - 1)
+    points = None
+
+    if 'errp' in kwargs:
+        errp = kwargs['errp']
+        # 
+        bound1 =  int(np.ceil(a/10)) * 10
+        boundk_1 = int(np.floor(b/10)) * 10
+        bounds = list(range(bound1, boundk_1+1, 10))
+        if bound1 != a: bounds.insert(0, a)
+        if boundk_1 != b: bounds.append(b)
+        points = adaptive_approx(fn, dfn, bounds, errp, True)
+    else:
+        err = kwargs.get('err', 0.01)
+        points = approx(fn, dfn, a, b, err, True)
+
+    x = np.linspace(a, b, 10000)
+    return points, x, fn(x)
+
+
+if __name__ == '__main__':
+    '''
+    from matplotlib import pyplot as plt
+    import matplotlib
+    matplotlib.use("pgf")
+    matplotlib.rcParams.update({
+        'pgf.texsystem': 'pdflatex',
+        'font.family': 'serif',
+        'text.usetex': True,
+        'pgf.rcfonts': False,
+    })
+    '''
+    from matplotlib import pyplot as plt
+    import plotutils as pu
+
+    fig, ax = plt.subplots()
+
+    dlp, dlx, dly = db2lin(-10, 10, errp=0.05)
+    ax.plot(dlx, dly, label='function', linestyle='dashed', linewidth=1)
+    ax.plot([x for x, _ in dlp], [y for _, y in dlp], label='approximation', linewidth=1)
+
+    ax.set_ylim(0, 3)
+    ax.set_xlim(-5, 5)
+    ax.axvline(0, color='black', linestyle='dotted', linewidth=1)
+
+    ax.set_xlabel('dBm')
+    ax.set_ylabel('mW')
+
+    pu.styled_legend(ax)
+    pu.export_plot(fig, 'data/db2lin.pgf', 3)
+    plt.clf()
+
+    fig, ax = plt.subplots()
+
+    ldp, ldx, ldy = lin2db(0.01, 10000)
+    ax.plot(ldx, ldy, label='function', linestyle='dashed', linewidth=1)
+    ax.plot([x for x, _ in ldp], [y for _, y in ldp], label='approximation', linewidth=1)
+    ax.scatter([x for x, _ in ldp], [y for _, y in ldp], color='red', s=5)
+
+    print(len(ldp))
+
+    ax.set_xlabel('mW')
+    ax.set_ylabel('dBm')
+
+    pu.styled_legend(ax)
+    pu.export_plot(fig, 'data/lin2db.pgf', 3)
+    plt.clf()

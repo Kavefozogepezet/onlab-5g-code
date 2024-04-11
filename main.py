@@ -1,8 +1,7 @@
-
 import matplotlib.pyplot as plot
 from operations import *
 from savenet import *
-from pathloss import *
+from connop import *
 from optimize import *
 from network import NetworkData
 
@@ -11,8 +10,10 @@ if __name__ == '__main__':
 
     op = (
         Load('test', force_init=True) &
+        DistanceCalc() &
+        DistanceWeight(1) &
         FreeSpacePathloss() &
-        SimpleConnectionFilter(min_snr=0) &
+        MinSnrFilterFilter() &
         Optimize() &
         Save('test')
     )
@@ -22,7 +23,7 @@ if __name__ == '__main__':
     print(net.gnbs)
     print(net.conns.to_string())
 
-    for index, row in net.conns.iterrows():
+    for index, row in net.conns[net.conns['filter']].iterrows():
         x1, y1 = row['x_ue'], row['y_ue']
         x2, y2 = row['x_gnb'], row['y_gnb']
         plot.plot([x1, x2], [y1, y2], color='blue', zorder=-10)

@@ -1,12 +1,10 @@
-
 import pandas as pd
-from io import StringIO
-import configparser
+import numpy as np
 from dataclasses import dataclass
 
 
 class Tables:
-    UE = 'ue'
+    UE = 'ues'
     B = 'gnbs'
     CONN = 'conns'
 
@@ -14,7 +12,7 @@ class Tables:
 class Cols:
     ID = 'id'
     UEID = 'id_ue'
-    BID = 'if_gnb'
+    BID = 'id_gnb'
     X = 'x'
     UEX = 'x_ue'
     BX = 'x_gnb'
@@ -26,26 +24,26 @@ class Cols:
     PL = 'pathloss'
     DEMAND = 'demand'
     WEIGHT = 'weight'
+    GAIN = 'gain'
+
+
+@dataclass
+class MCSTable:
+    levels: int = 8
+    min_snr: float = -5
+    spacing: float = 2
+    efficiency: float = 0.9
+
+    def __getitem__(self, item):
+        snr = self.min_snr + self.spacing * item
+        return (snr, self.efficiency * np.log2(1 + 10**(snr/10)))
 
 
 @dataclass
 class Channel:
-    noise: float
-    area: tuple[int, int]
-    bandwidth: tuple[float, float]
-
-
-    def to_ini(self):
-        config = configparser.ConfigParser()
-        config['channel'] = {
-            'noise': str(self.noise),
-            'area': f'{self.area[0]}x{self.area[1]}',
-            'bandwidth': f'{self.bandwidth[0]}-{self.bandwidth[1]}'
-        }
-        with StringIO() as strio:
-            config.write(strio)
-            strio.seek(0)
-            return strio.read()
+    noise: float = -100
+    area: tuple[int, int] = (100, 100)
+    bandwidth: tuple[float, float] = (0, 1)
 
 
 @dataclass
@@ -53,5 +51,6 @@ class NetworkData:
     ues = pd.DataFrame()
     gnbs = pd.DataFrame()
     conns = pd.DataFrame()
-    channel = Channel(0, (0, 0), (0, 0))
+    channel = Channel()
+    mcst = MCSTable()
 
