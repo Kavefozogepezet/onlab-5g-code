@@ -45,7 +45,7 @@ def lin2db(a, b, err=0.01):
     dfn = lambda x: 10 / (x * np.log(10))
 
     x = np.linspace(a, b, 10000)
-    return approx(fn, dfn, a, b, err, False), x, fn(x)
+    return dfn(a), approx(fn, dfn, a, b, err, False), dfn(b)
 
 
 def db2lin(a, b, **kwargs):
@@ -66,28 +66,19 @@ def db2lin(a, b, **kwargs):
         err = kwargs.get('err', 0.01)
         points = approx(fn, dfn, a, b, err, True)
 
-    x = np.linspace(a, b, 10000)
-    return points, x, fn(x)
+    return dfn(a), points, dfn(b)
 
 
 if __name__ == '__main__':
-    '''
-    from matplotlib import pyplot as plt
-    import matplotlib
-    matplotlib.use("pgf")
-    matplotlib.rcParams.update({
-        'pgf.texsystem': 'pdflatex',
-        'font.family': 'serif',
-        'text.usetex': True,
-        'pgf.rcfonts': False,
-    })
-    '''
     from matplotlib import pyplot as plt
     import plotutils as pu
 
     fig, ax = plt.subplots()
 
-    dlp, dlx, dly = db2lin(-10, 10, errp=0.05)
+    _, dlp, _ = db2lin(-10, 10, errp=0.05)
+    dlx = np.linspace(-10, 10, 10000)
+    dly = 10**(dlx/10)
+
     ax.plot(dlx, dly, label='function', linestyle='dashed', linewidth=1)
     ax.plot([x for x, _ in dlp], [y for _, y in dlp], label='approximation', linewidth=1)
 
@@ -104,16 +95,21 @@ if __name__ == '__main__':
 
     fig, ax = plt.subplots()
 
-    ldp, ldx, ldy = lin2db(0.01, 10000)
+    _, ldp, _ = lin2db(0.01, 40, 0.5)
+    ldx = np.linspace(0.01, 40, 100)
+    ldy = 10*np.log10(ldx)
+
     ax.plot(ldx, ldy, label='function', linestyle='dashed', linewidth=1)
     ax.plot([x for x, _ in ldp], [y for _, y in ldp], label='approximation', linewidth=1)
-    ax.scatter([x for x, _ in ldp], [y for _, y in ldp], color='red', s=5)
 
     print(len(ldp))
+
+    #ax.set_ylim(-20, 40)
+    #ax.set_xlim(0, 10000)
 
     ax.set_xlabel('mW')
     ax.set_ylabel('dBm')
 
     pu.styled_legend(ax)
-    pu.export_plot(fig, 'data/lin2db.pgf', 3)
+    pu.export_plot(fig, 'data/lin2db.png', 10)
     plt.clf()

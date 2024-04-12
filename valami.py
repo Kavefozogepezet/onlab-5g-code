@@ -1,24 +1,30 @@
+import numpy as np
 
-from docplex.mp.model import Model
+# Assuming x1, y1, x2, y2 are NumPy arrays
+def calculate_distances(x1, y1, x2, y2):
+    # Reshape x1 and y1 to column vectors
+    x1_col = x1.reshape((-1, 1))
+    y1_col = y1.reshape((-1, 1))
 
-model = Model('network')
+    # Reshape x2 and y2 to row vectors
+    x2_row = x2.reshape((1, -1))
+    y2_row = y2.reshape((1, -1))
 
-x2 = lambda x: x**2
-px = lambda x: 1/x
+    # Calculate the squared differences
+    dx_squared = (x1_col - x2_row) ** 2
+    dy_squared = (y1_col - y2_row) ** 2
 
-pairs1 = [(x/1000, x2(x/1000)) for x in range(1, 2000)]
-pairs2 = [(x/1000, px(x/1000)) for x in range(1, 2000)]
+    # Calculate the Euclidean distances
+    distances = np.sqrt(dx_squared + dy_squared)
 
-x = model.continuous_var(name='x', lb=0, ub=2)
+    return distances
 
-x2_aprx = model.piecewise(0, pairs1, 0, name='x2')
-px_aprx = model.piecewise(0, pairs2, 0, name='px')
+# Example usage:
+x1 = np.array([1, 2, 3])
+y1 = np.array([4, 5, 6])
+x2 = np.array([7, 8, 9])
+y2 = np.array([10, 11, 12])
 
-model.minimize(x2_aprx(x) + px_aprx(x))
-
-model.print_information()
-
-model.solve()
-solution = model.solution
-x_value = solution.get_value(x)
-print("Solution for x:", x_value)
+d = calculate_distances(x1, y1, x2, y2)
+row_indices, col_indices = np.where(d > 8)
+print(row_indices, col_indices)

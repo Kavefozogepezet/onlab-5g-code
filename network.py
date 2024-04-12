@@ -9,6 +9,10 @@ class Tables:
     CONN = 'conns'
 
 
+def farag(fa, targy: str):
+    pass
+
+
 class Cols:
     ID = 'id'
     UEID = 'id_ue'
@@ -35,6 +39,11 @@ class MCSTable:
     efficiency: float = 0.9
 
     def __getitem__(self, item):
+        if item < -self.levels or item >= self.levels:
+            raise IndexError("MCS level out of range")
+        elif item < 0:
+            item = self.levels + item
+
         snr = self.min_snr + self.spacing * item
         return (snr, self.efficiency * np.log2(1 + 10**(snr/10)))
 

@@ -62,7 +62,6 @@ class MinSnrFilterFilter(Operation):
             .merge(net.gnbs[[Cols.ID, Cols.GAIN]], left_on=Cols.BID, right_on=Cols.ID, how='inner', suffixes=(None, '_2'))
             .drop(columns=Cols.ID)
         )
-        print(conns_gain)
 
         net.conns['filter'] = (
             conns[Cols.MAX_POW] - conns[Cols.PL] - net.channel.noise

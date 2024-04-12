@@ -1,5 +1,6 @@
 from network import NetworkData
 import pandas as pd
+from decorator import decorator
 
 
 class RequiredColumnMissingException(Exception):
