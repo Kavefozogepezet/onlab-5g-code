@@ -71,7 +71,7 @@ def db2lin(a, b, **kwargs):
 
 if __name__ == '__main__':
     from matplotlib import pyplot as plt
-    import plotutils as pu
+    import utils.plotutils as pu
 
     fig, ax = plt.subplots()
 

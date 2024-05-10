@@ -1,6 +1,4 @@
-from network import NetworkData
-import pandas as pd
-from decorator import decorator
+from model.network import NetworkData
 
 
 class RequiredColumnMissingException(Exception):
@@ -12,7 +10,9 @@ class RequiredColumnMissingException(Exception):
 def requires(table: str, *columns: str):
     def requires_dec(func):
         def check_colums(self, net):
-            real_cols = getattr(net, table).columns
+            real_cols = getattr(net, table)
+            if table != 'conns':
+                real_cols = real_cols.columns
             for column in columns:
                 if column not in real_cols:
                     raise RequiredColumnMissingException(table, column, self.__class__.__name__)
@@ -64,13 +64,3 @@ class OpSequence(Operation):
         for op in self.ops:
             op.execute(net)
 
-
-class SimpleConnectionFilter(Operation):
-    def __init__(self, min_snr: float):
-        self.min_snr = min_snr
-
-
-    def execute(self, net: NetworkData) -> None:
-        conns = net.conns
-        filter = conns['max_power'] - conns['pathloss'] - net.channel.noise > self.min_snr
-        net.conns = conns[filter]

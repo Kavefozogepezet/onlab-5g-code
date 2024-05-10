@@ -1,9 +1,10 @@
 import matplotlib.pyplot as plot
-from operations import *
-from savenet import *
-from connop import *
-from optimize import *
-from network import NetworkData
+from model.operations import *
+from model.savenet import *
+from model.connop import *
+from model.optimize import *
+from model.network import NetworkData
+from model.interference import PlotInterferenceApprox
 
 class PrintSnr(Operation):
     @requires(Tables.CONN, Cols.MAX_POW, Cols.PL)
@@ -16,25 +17,36 @@ if __name__ == '__main__':
     net = NetworkData()
 
     op = (
-        Load('test', force_init=True) &
+        Load('data/test', force_init=True) &
         DistanceCalc() &
         DistanceWeight(1) &
         FreeSpacePathloss() &
-        MinSnrFilterFilter() &
-        PrintSnr() &
-        Optimize() &
-        Save('test')
+        CalcMaxSnr() &
+        MinSnrFilter() &
+        Optimize()
     )
     op.execute(net)
 
     BW = net.channel.bandwidth[1] - net.channel.bandwidth[0]
     mcst = MCSTable()
-    print(f'Max data rate is {BW * mcst[-1][1]} at snr {mcst[-1][0]}')
-    
-    for index, row in net.conns[net.conns['filter']].iterrows():
-        x1, y1 = row['x_ue'], row['y_ue']
-        x2, y2 = row['x_gnb'], row['y_gnb']
-        plot.plot([x1, x2], [y1, y2], color='blue', zorder=-10)
+    print(f'Max data rate is {BW * mcst[-1][1]} at snr {mcst[-1].snr}')
+    '''
+    snr = net.conns['max_snr']
+    for b, u in zip(*np.where(net.conns['max_snr'] > net.mcst[0].snr)):
+        print(f'Connection {u} -> {b} has snr {snr[b, u]}')
+        x1 = net.ues['x'].values[u]
+        y1 = net.ues['y'].values[u]
+        x2 = net.gnbs['x'].values[b]
+        y2 = net.gnbs['y'].values[b]
+        plot.plot([x1, x2], [y1, y2])
+    '''
+
+    mcs = net.conns['mcs_idx'].flatten()
+    filter = net.conns['filter'].flatten()
+    mcs = mcs[filter]
+    plot.hist(mcs)
+    plot.show()
+
 
     plot.scatter(net.ues['x'], net.ues['y'], label='UEs')
     plot.scatter(net.gnbs['x'], net.gnbs['y'], label='gNBs')

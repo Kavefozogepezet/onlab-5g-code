@@ -1,16 +1,13 @@
 import pandas as pd
 import numpy as np
 from dataclasses import dataclass
+from collections import namedtuple
 
 
 class Tables:
     UE = 'ues'
     B = 'gnbs'
     CONN = 'conns'
-
-
-def farag(fa, targy: str):
-    pass
 
 
 class Cols:
@@ -45,7 +42,10 @@ class MCSTable:
             item = self.levels + item
 
         snr = self.min_snr + self.spacing * item
-        return (snr, self.efficiency * np.log2(1 + 10**(snr/10)))
+        eff = self.efficiency * np.log2(1 + 10**(snr/10))
+
+        MCS = namedtuple('MCS', ['snr', 'efficiency'])
+        return MCS(snr, eff)
 
 
 @dataclass
@@ -59,7 +59,6 @@ class Channel:
 class NetworkData:
     ues = pd.DataFrame()
     gnbs = pd.DataFrame()
-    conns = pd.DataFrame()
+    conns = dict()
     channel = Channel()
     mcst = MCSTable()
-

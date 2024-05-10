@@ -1,5 +1,5 @@
-from operations import *
-from network import *
+from model.operations import *
+from model.network import *
 import numpy as np
 import zipfile
 import os
@@ -77,14 +77,17 @@ class Load(Operation):
         net.gnbs['id'] = net.gnbs.index
         self.read_gnb_props(net, gnbs)
 
-        self._gen_connections(net)
-
 
     def _load_zip(self, name, net):
         with zipfile.ZipFile(name, 'r') as zip_file:
             net.ues = pd.read_csv(zip_file.open('ues.csv'))
             net.gnbs = pd.read_csv(zip_file.open('gnbs.csv'))
-            net.conns = pd.read_csv(zip_file.open('conns.csv'))
+            file_names = [name for name in zip_file.namelist() if name.startswith('conns/')]
+            for file_name in file_names:
+                col_name = file_name[6:-4]
+                with zip_file.open(file_name) as file:
+                    net.conns[col_name] = np.loadtxt(file)
+
             parser = configparser.ConfigParser()
             inistr = zip_file.read('channel.ini').decode('utf-8')
             parser.read_string(inistr)
@@ -115,10 +118,6 @@ class Load(Operation):
             return grid(*channel.area, rows, cols)
         elif method == 'scatter':
             return scatter(*channel.area, float(args))
-        
-
-    def _gen_connections(self, net):
-        net.conns = net.ues.merge(net.gnbs, 'cross', suffixes=('_ue', '_gnb'))
 
 
     def read_ue_props(self, net, ues):
@@ -159,8 +158,12 @@ class Save(Operation):
         with zipfile.ZipFile(path, 'w', compression=zipfile.ZIP_DEFLATED) as zip_file:
             zip_file.writestr('ues.csv', net.ues.to_csv(index=False))
             zip_file.writestr('gnbs.csv', net.gnbs.to_csv(index=False))
-            zip_file.writestr('conns.csv', net.conns.to_csv(index=False))
             zip_file.writestr('channel.ini', config_str)
+            for col_name, col_data in net.conns.items():
+                with StringIO() as strio:
+                    np.savetxt(strio, col_data)
+                    strio.seek(0)
+                    zip_file.writestr(f'conns/{col_name}.txt', strio.read())
 
 
     def channel_to_ini(self, channel, config):
