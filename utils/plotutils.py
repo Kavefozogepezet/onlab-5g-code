@@ -11,8 +11,7 @@ matplotlib.rcParams.update({
 })
 
 
-def styled_legend(ax):
-    legend = ax.legend()
+def styled_legend(legend):
     frame = legend.get_frame()
     frame.set_alpha(1)
     frame.set_edgecolor('black')
