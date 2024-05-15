@@ -1,7 +1,6 @@
 from model.operations import *
 from model.savenet import *
 from model.connop import *
-from model.optimize import *
 from model.network import NetworkData
 from model.interference import PlotInterferenceApprox
 

@@ -104,23 +104,23 @@ class PlotInterferenceApprox(Operation):
     @requires('ues', 'max_power', 'gain')
     @requires('gnbs', 'gain')
     def execute(self, net):
+        import utils.plotutils as pu
         
         fconns = ConnectionFilter(net)
         variations = np.linspace(0.1, 1, 10)
         errs = np.zeros((len(variations), len(fconns)), dtype=float)
         
         for i, data in enumerate(InterfApproxProvider(net, fconns)):
-            '''
-            plot.scatter(net.ues['x'], net.ues['y'], label='UEs')
-            plot.scatter(net.ues['x'][data.ues], net.ues['y'][data.ues], label='Selected UEs')
-            plot.scatter(net.gnbs['x'], net.gnbs['y'], label='gNBs', marker='^')
-            plot.scatter(net.gnbs['x'][data.b], net.gnbs['y'][data.b], label='the gNB', marker='^')
-            plot.xlim(0, net.channel.area[0])
-            plot.ylim(0, net.channel.area[1])
-            plot.gca().set_aspect('equal', adjustable='box')
-            plot.legend()
-            plot.show()
-            '''
+            '''if i == 0:
+                plot.scatter(net.ues['x'], net.ues['y'], label='UEs')
+                plot.scatter(net.ues['x'][data.ues], net.ues['y'][data.ues], label='Selected UEs')
+                plot.scatter(net.gnbs['x'], net.gnbs['y'], label='gNBs', marker='^')
+                plot.scatter(net.gnbs['x'][data.b], net.gnbs['y'][data.b], label='the gNB', marker='^')
+                plot.xlim(0, net.channel.area[0])
+                plot.ylim(0, net.channel.area[1])
+                plot.gca().set_aspect('equal', adjustable='box')
+                plot.legend()
+                plot.show()'''
 
             for j, var in enumerate(variations):
                 pow_mul = 1 + np.random.rand(data.total_interferer_count) * var
@@ -128,15 +128,17 @@ class PlotInterferenceApprox(Operation):
         
         errs *= 100
 
+        plot.rcParams.update({'font.size': 9})
+
         fig, ax = plot.subplots()
         ax.boxplot(errs.T, flierprops={'marker': '.', 'markerfacecolor': 'black', 'markeredgewidth': 0}, whis=2.75)
         ax.grid(axis='y')
         ax.set_xticks(range(1, len(variations) + 1), [f'{int(v*100)}%' for v in variations], rotation=45)
-        ax.set_yticks(range(0, 21, 2))
+        ax.set_yticks(range(0, 19, 2))
         ax.yaxis.set_major_formatter(mtick.PercentFormatter(decimals=0))
 
-        ax.set_xlabel('Eszközök teljesítményének maximális eltérése (%)')
+        ax.set_xlabel('Adóteljesítményének maximális eltérése')
         ax.set_ylabel('Interferencia becslés hibája (%)')
         
-        plot.show()
+        pu.export_plot(fig, 'interference_approx.pgf', 2.8)
 
